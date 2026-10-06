@@ -13,7 +13,7 @@ It has four tabs, the same as the original: Favorites for one-tap calling of sta
 
 ## What it does
 
-Tapping a favorite calls them directly; the info button opens them in your contacts app. Recents shows who called, when, and whether the call was incoming, outgoing, missed or blocked; tapping an entry calls back. The Contacts tab opens a contact in your contacts app, and has shortcuts for adding and searching. The keypad dials any number, long-press 0 for +. Other apps that ask to dial a number (links in a browser, for example) can open MonoPhone with the number prefilled.
+Tapping a favorite calls them directly; the info button opens them in your contacts app. Recents shows who called, when, and whether the call was incoming, outgoing, missed or blocked; tapping an entry calls back. The Contacts tab opens a contact in your contacts app, and has shortcuts for adding and searching. The keypad dials any number, long-press 0 for +. With the keypad empty, long-press 1 to call your voicemail; if your SIM does not share a voicemail number, the app asks for it once and remembers it. The 1 key carries a small voicemail symbol as a reminder, like on classic phones; when your carrier reports a waiting voicemail, a dot appears next to it and on the Dial tab icon. Other apps that ask to dial a number (links in a browser, for example) can open MonoPhone with the number prefilled.
 
 ## Install
 
@@ -22,7 +22,7 @@ or build from source:
 
     ./gradlew installDebug
 
-On first start the app asks for contacts and call history access, which the tabs need to show anything. The first call also asks for phone permission.
+On first start the app asks for contacts, call history and phone access; the first two are what the tabs show, phone access is for the voicemail indicator. The first call also asks for calling permission.
 
 ## Structure
 
@@ -34,6 +34,7 @@ On first start the app asks for contacts and call history access, which the tabs
 - `ui/ContactsTab.kt` - contact list with search and add shortcuts
 - `ui/DialTab.kt` - the keypad
 - `ui/PermissionScreen.kt` - first-run access request
+- `ui/VoicemailNumberSheet.kt` - asks for the voicemail number when the SIM has none
 - `ui/Components.kt` - dotted divider and shared styling
 
 ## Support

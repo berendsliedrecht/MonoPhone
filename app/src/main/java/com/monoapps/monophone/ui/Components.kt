@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.telephony.TelephonyManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -61,6 +62,20 @@ fun canCallDirectly(context: Context): Boolean =
 
 fun placeCall(context: Context, number: String) {
     startSafely(context, Intent(Intent.ACTION_CALL, Uri.parse("tel:$number")))
+}
+
+/** Dial the voicemail box; telecom resolves the number from the SIM. */
+fun placeVoicemailCall(context: Context) {
+    startSafely(context, Intent(Intent.ACTION_CALL, Uri.parse("voicemail:")))
+}
+
+/** The voicemail number telephony knows, or null when the SIM has none. */
+fun systemVoicemailNumber(context: Context): String? = try {
+    context.getSystemService(TelephonyManager::class.java)
+        ?.voiceMailNumber?.takeIf { it.isNotBlank() }
+} catch (e: SecurityException) {
+    // READ_PHONE_STATE denied; treat as unknown.
+    null
 }
 
 /** Start an activity, ignoring the tap when no app can handle the intent. */

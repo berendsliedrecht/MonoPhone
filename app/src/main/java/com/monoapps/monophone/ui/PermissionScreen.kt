@@ -34,14 +34,19 @@ fun PermissionScreen(onGranted: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         TextMMD(
             "To show your contacts and call history, the app needs access to " +
-                "both. Everything stays on this phone.",
+                "both. Phone access lets it show when voicemail is waiting. " +
+                "Everything stays on this phone.",
             fontSize = 20.sp,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(32.dp))
         OutlinedButtonMMD(onClick = {
             launcher.launch(
-                arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.READ_CALL_LOG)
+                arrayOf(
+                    Manifest.permission.READ_CONTACTS,
+                    Manifest.permission.READ_CALL_LOG,
+                    Manifest.permission.READ_PHONE_STATE,
+                )
             )
         }) {
             TextMMD("Allow access", fontSize = 22.sp, fontWeight = FontWeight.Bold)

@@ -15,11 +15,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
+import androidx.compose.material.icons.outlined.Voicemail
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -52,7 +55,9 @@ private val KEYS = listOf(
 @Composable
 fun DialTab(
     initialNumber: String,
+    voicemailWaiting: Boolean,
     onCall: (String) -> Unit,
+    onCallVoicemail: () -> Unit,
     bottomBar: @Composable () -> Unit,
 ) {
     var number by rememberSaveable { mutableStateOf(initialNumber) }
@@ -89,10 +94,16 @@ fun DialTab(
                     row.forEach { digit ->
                         DialKey(
                             digit = digit,
+                            voicemailKey = digit == "1",
+                            voicemailWaiting = voicemailWaiting,
                             onPress = { buzz(); number += digit },
-                            onLongPress = if (digit == "0") {
-                                { buzz(); number += "+" }
-                            } else null,
+                            onLongPress = when (digit) {
+                                "0" -> { { buzz(); number += "+" } }
+                                // Speed dial: only on an empty keypad, so a
+                                // long-press mid-number never places a call.
+                                "1" -> { { if (number.isEmpty()) { buzz(); onCallVoicemail() } } }
+                                else -> null
+                            },
                         )
                     }
                 }
@@ -143,6 +154,8 @@ private fun DialKey(
     digit: String,
     onPress: () -> Unit,
     onLongPress: (() -> Unit)?,
+    voicemailKey: Boolean = false,
+    voicemailWaiting: Boolean = false,
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -156,5 +169,29 @@ private fun DialKey(
             ),
     ) {
         TextMMD(digit, fontSize = 40.sp, fontWeight = FontWeight.Bold)
+        // Printed glyph hints the long-press, like on classic phones; the
+        // dot beside it appears while a voicemail is waiting.
+        if (voicemailKey) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.align(Alignment.BottomCenter).offset(y = 4.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.Voicemail,
+                    contentDescription = if (voicemailWaiting) "Voicemail waiting" else "Voicemail",
+                    tint = Color.Black,
+                    modifier = Modifier.size(18.dp),
+                )
+                if (voicemailWaiting) {
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Box(
+                        Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black)
+                    )
+                }
+            }
+        }
     }
 }
