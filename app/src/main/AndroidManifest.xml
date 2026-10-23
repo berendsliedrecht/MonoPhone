@@ -5,12 +5,21 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- The Recents tab shows the device call history. -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <!-- Opening Recents marks missed calls as seen in the call log. Never
+         requested at runtime: granted along with the default dialer role. -->
+    <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
     <!-- Dialing places the call directly, like the stock app. -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <!-- Short tick on keypad presses. -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Carrier message-waiting indicator drives the voicemail badge. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Incoming, ongoing, and missed call notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Incoming calls open the call screen while the phone is locked. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Proximity wake lock: screen off while the phone is at the ear. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -21,21 +30,78 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Open with a number prefilled when another app asks to dial. -->
+            <!-- Open with a number prefilled when another app asks to dial.
+                 Both DIAL filters are required for the default dialer role. -->
             <intent-filter>
                 <action android:name="android.intent.action.DIAL" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="tel" />
+                <data android:scheme="voicemail" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.DIAL" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- tel: links in browsers and other apps. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tel" />
+            </intent-filter>
+            <!-- "Show call history" requests open the Recents tab. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/calls" />
+            </intent-filter>
+            <!-- Hardware call button, if present. -->
+            <intent-filter>
+                <action android:name="android.intent.action.CALL_BUTTON" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
+
+        <!-- Call screen; shows over the lock screen for incoming calls. -->
+        <activity
+            android:name=".call.InCallActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true" />
+
+        <!-- Bound by telecom while MonoPhone is the default dialer. -->
+        <service
+            android:name=".call.CallService"
+            android:exported="true"
+            android:permission="android.permission.BIND_INCALL_SERVICE">
+            <meta-data
+                android:name="android.telecom.IN_CALL_SERVICE_UI"
+                android:value="true" />
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+        </service>
+
+        <!-- Protected broadcast from telecom; only the system can send it. -->
+        <receiver
+            android:name=".call.MissedCallReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telecom.action.SHOW_MISSED_CALLS_NOTIFICATION" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Decline / Hang up notification actions. -->
+        <receiver
+            android:name=".call.CallActionReceiver"
+            android:exported="false" />
     </application>
 </manifest>

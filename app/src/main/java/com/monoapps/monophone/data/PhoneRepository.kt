@@ -84,6 +84,20 @@ class PhoneRepository(private val resolver: ContentResolver) {
         return rows
     }
 
+    /** Clears the "new missed call" flags, like opening the stock call log. */
+    fun markMissedCallsRead() {
+        val values = android.content.ContentValues().apply {
+            put(CallLog.Calls.NEW, 0)
+            put(CallLog.Calls.IS_READ, 1)
+        }
+        resolver.update(
+            CallLog.Calls.CONTENT_URI,
+            values,
+            "${CallLog.Calls.TYPE} = ? AND ${CallLog.Calls.NEW} = 1",
+            arrayOf(CallLog.Calls.MISSED_TYPE.toString()),
+        )
+    }
+
     private fun lookupName(number: String): String? {
         if (number.isBlank()) return null
         resolver.query(

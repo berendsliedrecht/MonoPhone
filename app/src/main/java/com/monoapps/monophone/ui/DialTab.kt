@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.outlined.Voicemail
@@ -55,12 +56,14 @@ private val KEYS = listOf(
 @Composable
 fun DialTab(
     initialNumber: String,
+    resetKey: Int,
     voicemailWaiting: Boolean,
     onCall: (String) -> Unit,
     onCallVoicemail: () -> Unit,
     bottomBar: @Composable () -> Unit,
 ) {
-    var number by rememberSaveable { mutableStateOf(initialNumber) }
+    // Keyed so a new dial intent replaces whatever was typed before.
+    var number by rememberSaveable(resetKey) { mutableStateOf(initialNumber) }
 
     val context = LocalContext.current
     val vibrator = remember { context.getSystemService(Vibrator::class.java) }
@@ -124,14 +127,14 @@ fun DialTab(
                         )
                     }
                 }
-                // Outlined call button, per the no-infill rule.
+                // Outlined squircle call button, per the no-infill rule.
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .size(84.dp)
-                        .clip(CircleShape)
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(14.dp))
                         .background(Color.White)
-                        .border(2.dp, Color.Black, CircleShape)
+                        .border(2.dp, Color.Black, RoundedCornerShape(14.dp))
                         .calmClickable { buzz(); if (number.isNotBlank()) onCall(number) },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -139,7 +142,7 @@ fun DialTab(
                         painterResource(R.drawable.ic_call),
                         contentDescription = "Call",
                         tint = Color.Black,
-                        modifier = Modifier.size(38.dp),
+                        modifier = Modifier.size(30.dp),
                     )
                 }
             }
@@ -160,7 +163,7 @@ private fun DialKey(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(width = 76.dp, height = 64.dp)
+            .size(width = 84.dp, height = 74.dp)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -168,7 +171,7 @@ private fun DialKey(
                 onLongClick = onLongPress,
             ),
     ) {
-        TextMMD(digit, fontSize = 40.sp, fontWeight = FontWeight.Bold)
+        TextMMD(digit, fontSize = 46.sp, fontWeight = FontWeight.Bold)
         // Printed glyph hints the long-press, like on classic phones; the
         // dot beside it appears while a voicemail is waiting.
         if (voicemailKey) {

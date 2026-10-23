@@ -1,6 +1,7 @@
 package com.monoapps.monophone.ui
 
 import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -41,13 +42,16 @@ fun PermissionScreen(onGranted: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(32.dp))
         OutlinedButtonMMD(onClick = {
-            launcher.launch(
-                arrayOf(
-                    Manifest.permission.READ_CONTACTS,
-                    Manifest.permission.READ_CALL_LOG,
-                    Manifest.permission.READ_PHONE_STATE,
-                )
+            val permissions = mutableListOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.READ_CALL_LOG,
+                Manifest.permission.READ_PHONE_STATE,
             )
+            // Call notifications; only a runtime permission on Android 13+.
+            if (Build.VERSION.SDK_INT >= 33) {
+                permissions += Manifest.permission.POST_NOTIFICATIONS
+            }
+            launcher.launch(permissions.toTypedArray())
         }) {
             TextMMD("Allow access", fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }

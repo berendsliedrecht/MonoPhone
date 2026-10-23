@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.telecom.TelecomManager
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyManager
 import androidx.compose.runtime.getValue
@@ -15,6 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.monoapps.monophone.call.CallNotifier
+import com.monoapps.monophone.call.isDefaultDialer
 import com.monoapps.monophone.data.ContactRow
 import com.monoapps.monophone.data.PhoneRepository
 import com.monoapps.monophone.data.RecentCall
@@ -113,6 +116,19 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 recents = recentRows
             }
         }
+    }
+
+    /** Opening Recents counts as having seen the missed calls. */
+    fun clearMissedCalls() {
+        val app = getApplication<Application>()
+        CallNotifier.cancelMissed(app)
+        // Resets telecom's missed-call count; default dialer only.
+        if (isDefaultDialer(app)) {
+            app.getSystemService(TelecomManager::class.java)?.cancelMissedCallsNotification()
+        }
+        val canWrite = ContextCompat.checkSelfPermission(app, Manifest.permission.WRITE_CALL_LOG) ==
+            PackageManager.PERMISSION_GRANTED
+        if (canWrite) viewModelScope.launch(Dispatchers.IO) { repo.markMissedCallsRead() }
     }
 
     suspend fun primaryNumber(contactId: Long): String? =

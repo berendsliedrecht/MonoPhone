@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.CallLog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monoapps.monophone.call.defaultDialerRequest
 import com.monoapps.monophone.ui.ContactsTab
 import com.monoapps.monophone.ui.DialTab
 import com.monoapps.monophone.ui.FavoritesTab
@@ -61,19 +63,57 @@ enum class Tab(val label: String, val icon: ImageVector) {
     Dial("Dial", Icons.Outlined.Dialpad),
 }
 
+/** Where an external intent (notification tap, tel: link) wants to land. */
+data class NavTarget(val tab: Tab?, val dial: String, val nonce: Int)
+
 class MainActivity : ComponentActivity() {
+
+    private var nav by mutableStateOf(NavTarget(null, "", 0))
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dialNumber = intent
-            ?.takeIf { it.action == Intent.ACTION_DIAL }
-            ?.data?.schemeSpecificPart
+        // Only on a fresh launch; a recreation must keep the restored tab.
+        if (savedInstanceState == null) handleIntent(intent)
+        setContent { ThemeMMD { App(nav) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        intent ?: return
+        val telNumber = intent.data
+            ?.takeIf { it.scheme == "tel" }
+            ?.schemeSpecificPart
             .orEmpty()
-        setContent { ThemeMMD { App(dialNumber) } }
+        val target = when {
+            intent.action == Intent.ACTION_DIAL ||
+                intent.action == Intent.ACTION_VIEW && telNumber.isNotEmpty() ->
+                NavTarget(Tab.Dial, telNumber, 0)
+
+            intent.action == Intent.ACTION_CALL_BUTTON -> NavTarget(Tab.Dial, "", 0)
+
+            intent.action == Intent.ACTION_VIEW && intent.type == CallLog.Calls.CONTENT_TYPE ->
+                NavTarget(Tab.Recents, "", 0)
+
+            intent.getStringExtra(EXTRA_OPEN_TAB) == TAB_RECENTS -> NavTarget(Tab.Recents, "", 0)
+
+            else -> return
+        }
+        nav = target.copy(nonce = nav.nonce + 1)
+    }
+
+    companion object {
+        const val EXTRA_OPEN_TAB = "open_tab"
+        const val TAB_RECENTS = "recents"
     }
 }
 
 @Composable
-private fun App(initialDial: String) {
+private fun App(nav: NavTarget) {
     val viewModel: PhoneViewModel = viewModel()
     if (!viewModel.hasPermissions) {
         PermissionScreen(onGranted = { viewModel.onPermissionsGranted() })
@@ -95,8 +135,30 @@ private fun App(initialDial: String) {
         if (missing) phoneStatePermission.launch(Manifest.permission.READ_PHONE_STATE)
     }
 
-    var tab by rememberSaveable {
-        mutableStateOf(if (initialDial.isNotEmpty()) Tab.Dial else Tab.Favorites)
+    var tab by rememberSaveable { mutableStateOf(Tab.Favorites) }
+    var dialNumber by rememberSaveable { mutableStateOf("") }
+    // Bumped per dial intent so the keypad resets even for a repeated number.
+    var dialSeed by rememberSaveable { mutableStateOf(0) }
+    LaunchedEffect(nav) {
+        nav.tab?.let { tab = it }
+        if (nav.dial.isNotEmpty()) {
+            dialNumber = nav.dial
+            dialSeed++
+        }
+    }
+
+    // The point of the app: offer to take over as the phone app. On API 29+
+    // the system dialog stops reappearing once the user has declined twice.
+    val roleLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {}
+    LaunchedEffect(Unit) {
+        defaultDialerRequest(context)?.let(roleLauncher::launch)
+    }
+
+    // Seeing Recents clears the missed-call notification and badge.
+    LaunchedEffect(tab) {
+        if (tab == Tab.Recents) viewModel.clearMissedCalls()
     }
 
     var pendingCall by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -193,7 +255,8 @@ private fun App(initialDial: String) {
         )
 
         Tab.Dial -> DialTab(
-            initialNumber = initialDial,
+            initialNumber = dialNumber,
+            resetKey = dialSeed,
             voicemailWaiting = viewModel.voicemailWaiting,
             onCall = ::call,
             onCallVoicemail = ::callVoicemail,
